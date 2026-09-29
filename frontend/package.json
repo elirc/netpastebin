@@ -1,0 +1,18 @@
+{
+  "name": "pastebin-clone",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test --test-concurrency=1 tests/*.test.js"
+  },
+  "dependencies": {
+    "react": "19.2.6",
+    "react-dom": "19.2.6"
+  },
+  "devDependencies": {"@vitejs/plugin-react": "6.0.2", "vite": "8.0.14"},
+  "engines": {"node": ">=22.16.0 <23"}
+}

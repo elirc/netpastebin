@@ -1,0 +1,14 @@
+bin/
+obj/
+node_modules/
+dist/
+.vite/
+App_Data/
+*.user
+*.suo
+*.log
+.env
+.env.*
+verification-output/
+.venv/
+__pycache__/
