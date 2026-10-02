@@ -1,6 +1,6 @@
 # Paste workspace
 
-A local React and ASP.NET Core CRUD application for publishing text, finding public pastes, keeping edit-key receipts, reviewing version conflicts and learning reliable persistence. Read the [current learning course](astraupskill/README.md) for a detailed junior-to-mid-level walkthrough.
+A local React and ASP.NET Core CRUD application for publishing text, finding public pastes, keeping edit-key receipts, reviewing version conflicts and learning reliable persistence. Read the [current learning course](astraupskill/README.md) for a detailed junior-to-mid-level walkthrough, and the [invariants course](astraupskill/course/LEARNING-PATH.md) for the senior-level layer on expiry, slug entropy, limit agreement and content safety.
 
 ## Run locally
 
