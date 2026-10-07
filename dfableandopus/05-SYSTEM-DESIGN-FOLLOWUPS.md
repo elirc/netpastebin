@@ -61,7 +61,7 @@ Receipts are the exception: `CreationReceipt` deliberately survives deletion (`W
 
 ## 5. Where does authentication go?
 
-There is none, and the honest framing is that capabilities and accounts answer different questions. `X-Paste-Key` proves "I may edit this paste"; it never proves "I am this person". `ReadKey` (`backend/Api/AppHost.cs:229`) even accepts a `utf8.` base64url framing for migrated user-chosen keys, and the course is explicit that encoding them differently does not strengthen them.
+There is none, and the honest framing is that capabilities and accounts answer different questions. `X-Paste-Key` proves "I may edit this paste"; it never proves "I am this person". `ReadKey` (`backend/Api/AppHost.cs:218`) even accepts a `utf8.` base64url framing for migrated user-chosen keys, and the course is explicit that encoding them differently does not strengthen them.
 
 Adding accounts does not replace the capability, it layers on it: an owner column for listing and revocation, sessions or bearer tokens for identity, and the capability retained for anonymous share links. The interesting design question is revocation, which capabilities do badly. Rotating a key today means changing `EditKeyHash`, which invalidates every copy of the old key at once with no way to tell which copy was leaked. Per-recipient keys, each its own row, would let you revoke one link, at the cost of a key table and a lookup on every write.
 

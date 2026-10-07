@@ -164,7 +164,7 @@ roughly 34 such pastes hit layer 3's 409 long before layer 2 objects to any
 of them. This is the same parser-vs-field-limit lesson as gitjira's 128 KB
 JSON cap; exercise 1.3 measures where the real boundary is. **No test pins
 any cross-layer agreement** — `BackendChecks` checks the 100,001-char
-rejection (`Program.cs:79`) at the domain layer only.
+rejection (`verification/BackendChecks/Program.cs:79`) at the domain layer only.
 
 ### Content-type safety — defense in depth, correctly layered
 

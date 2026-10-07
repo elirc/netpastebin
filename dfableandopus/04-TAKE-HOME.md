@@ -23,7 +23,7 @@ It returns the same `PasteDetail` shape as `PUT`, with the `ETag` header set to 
 
 1. `expiration` accepts `hour`, `day`, `week` and `never`. It does **not** accept `keep`, because renewing to the value you already have is a no-op request the endpoint should reject rather than silently accept. Anything else is 400.
 2. The body must contain exactly the one field. An unknown or duplicated field is 400, consistent with `JsonUnmappedMemberHandling.Disallow` (`backend/Data/PasteStore.cs:20`).
-3. A missing `If-Match` is 428; a stale one is 412. Reuse `ReadVersion` (`backend/Api/AppHost.cs:203`) and `CheckVersion` (`backend/Domain/PasteCommands.cs:134`); do not write a second version comparison.
+3. A missing `If-Match` is 428; a stale one is 412. Reuse `ReadVersion` (`backend/Api/AppHost.cs:208`) and `CheckVersion` (`backend/Domain/PasteCommands.cs:134`); do not write a second version comparison.
 4. A wrong or missing key is 404, matching `RequireOwner` (`PasteCommands.cs:125`). Do not introduce a 403.
 5. An already expired paste is 404. Renew does not resurrect: `allowExpired: false`, the same choice `UpdateAsync` makes.
 6. An accepted renewal increments the paste's `Version` by one, sets `UpdatedAt`, advances the workspace `Revision` by exactly one and appends one `ChangeEntry`. Content, title, language and visibility are unchanged, byte for byte.

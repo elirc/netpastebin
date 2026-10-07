@@ -76,9 +76,9 @@ return store.MutateAsync(workspace =>
 
 `CheckVersion(paste, expectedVersion);`, which sits at `PasteCommands.cs:102` between `RequireOwner` and the capacity guard, has been deleted.
 
-The endpoint still requires an `If-Match` header, because `ReadVersion` (`AppHost.cs:203`) runs at the HTTP boundary and throws 428 when the header is absent. So the request still looks well formed. But the stated version is now parsed and then ignored: every well-formed PUT is accepted, whatever version it names, and last write wins.
+The endpoint still requires an `If-Match` header, because `ReadVersion` (`AppHost.cs:208`) runs at the HTTP boundary and throws 428 when the header is absent. So the request still looks well formed. But the stated version is now parsed and then ignored: every well-formed PUT is accepted, whatever version it names, and last write wins.
 
-The failure is invisible to the eye and invisible to the front end, which will happily report "Saved version 7". It is visible to five of the fourteen tests: the stale-version case (`PasteCommandTests.cs:15`), the missing-`If-Match` case (`PasteCommandTests.cs:36`, because `expected < 1` is also checked in `CheckVersion`), the two-writer race (`PasteCommandTests.cs:113`, which would see `{200, 200}`), and the two HTTP precondition cases.
+The failure is invisible to the eye and invisible to the front end, which will happily report "Saved version 7". It is visible to four of the fourteen tests: the stale-version case (`PasteCommandTests.cs:15`), the missing-`If-Match` case (`PasteCommandTests.cs:36`, because `expected < 1` is also checked in `CheckVersion`), the two-writer race (`PasteCommandTests.cs:113`, which would see `{200, 200}`), and the HTTP 412 case (`PasteApiTests.APutWithAStaleIfMatch_Returns412`). The HTTP 428 case stays green, because `ReadVersion` rejects the missing header before `UpdateAsync` runs. (Corrected 2026-10-06; an earlier version said five tests, counting the 428 case.)
 
 Note what the mutation does not break: nothing throws, the revision still advances by exactly one, so `MutateAsync`'s invariants stay satisfied. Storage-level guards cannot substitute for a domain rule.
 </details>
@@ -95,8 +95,8 @@ Four requests against a running server. The paste `abc12345` exists at version 3
 <details>
 <summary>Answers</summary>
 
-1. **428 Precondition Required.** `ReadVersion` checks `Headers.ContainsKey("If-Match")` first and throws with status 428 (`AppHost.cs:207`). Nothing reached the domain.
-2. **400 Bad Request.** The parser requires a strong quoted value: length at least 3, first and last characters `"` (`AppHost.cs:209-211`). The `PasteRuleException` there uses the default status, which is 400 (`WorkspaceDocument.cs:35`). This is a malformed header, not a conflict, and conflating it with 412 would tell the client to re-read when it should fix its code.
+1. **428 Precondition Required.** `ReadVersion` checks `Headers.ContainsKey("If-Match")` first and throws with status 428 (`AppHost.cs:210`). Nothing reached the domain.
+2. **400 Bad Request.** The parser requires a strong quoted value: length at least 3, first and last characters `"` (`AppHost.cs:212-214`). The `PasteRuleException` there uses the default status, which is 400 (`WorkspaceDocument.cs:35`). This is a malformed header, not a conflict, and conflating it with 412 would tell the client to re-read when it should fix its code.
 3. **412 Precondition Failed.** The header parses, the paste is found, the key matches, and `CheckVersion` sees 3 != 2 (`PasteCommands.cs:137`).
 4. **404 Not Found.** `RequireOwner` collapses "missing", "expired" and "wrong key" into one 404 (`PasteCommands.cs:130`), deliberately, so the response does not confirm that this slug exists to a caller without its capability. Note the ordering consequence: the key is checked before the version, so a wrong key with a stale version is 404 and not 412.
 </details>
@@ -152,7 +152,7 @@ A correct version of this request keeps `edit.version` and changes only presenta
 
 ## Drill 6: explain this function
 
-`backend/Api/AppHost.cs:203-214`.
+`backend/Api/AppHost.cs:208-216`.
 
 ```csharp
 private static long ReadVersion(HttpContext context)
@@ -169,11 +169,11 @@ private static long ReadVersion(HttpContext context)
 <details>
 <summary>Answer</summary>
 
-It is the whole precondition contract in eleven lines, and every clause is deliberate.
+It is the whole precondition contract in nine lines, and every clause is deliberate.
 
 Absence is separated from malformedness, and both from staleness. Absent is 428. Malformed is the default 400. Stale is 412, decided later in the domain at `PasteCommands.cs:138`. Three causes, three codes, three different client actions.
 
-`OneHeader` (`AppHost.cs:196`) requires exactly one non-empty value. A duplicated `If-Match` is ambiguous and is rejected rather than having the first or last value picked arbitrarily.
+`OneHeader` (`AppHost.cs:201`) requires exactly one non-empty value. A duplicated `If-Match` is ambiguous and is rejected rather than having the first or last value picked arbitrarily.
 
 Only strong ETags are accepted. There is no `W/` branch, because a weak validator means "semantically equivalent", which is not a safe basis for a write.
 

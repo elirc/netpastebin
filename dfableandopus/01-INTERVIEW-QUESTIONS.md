@@ -14,7 +14,7 @@ Three collections in one document. `WorkspaceDocument` (`backend/Domain/Workspac
 
 ### 3. Trace a successful edit from click to disk. (junior)
 
-`saveEdit` in `frontend/src/PasteWorkspace.jsx:393` validates the draft and calls `api` with `version: edit.version`. `api` (`frontend/src/paste-client.js:96`) sets `If-Match` through `versionHeader` (`paste-client.js:88`) and `X-Paste-Key` through `keyHeader` (`paste-client.js:76`). The route at `backend/Api/AppHost.cs:154` calls `ReadKey` and `ReadVersion`, then `PasteCommands.UpdateAsync` (`PasteCommands.cs:90`). Validation runs first, outside storage; then `store.MutateAsync` takes the lease, re-reads, checks ownership and version, and replaces the file. On return the route writes `ETag` from the new version (`AppHost.cs:157`).
+`saveEdit` in `frontend/src/PasteWorkspace.jsx:393` validates the draft and calls `api` with `version: edit.version`. `api` (`frontend/src/paste-client.js:96`) sets `If-Match` through `versionHeader` (`paste-client.js:88`) and `X-Paste-Key` through `keyHeader` (`paste-client.js:76`). The route at `backend/Api/AppHost.cs:155` calls `ReadKey` and `ReadVersion`, then `PasteCommands.UpdateAsync` (`PasteCommands.cs:90`). Validation runs first, outside storage; then `store.MutateAsync` takes the lease, re-reads, checks ownership and version, and replaces the file. On return the route writes `ETag` from the new version (`AppHost.cs:157`).
 
 ### 4. Where does validation happen, and why in more than one place? (mid)
 
@@ -44,7 +44,7 @@ Lost update. Two drafts opened at version 4; without a precondition the later sa
 
 ### 10. Why 412 for one case and 428 for the other? (mid)
 
-`CheckVersion` throws 428 when `expected < 1` (`PasteCommands.cs:136`) and 412 when the version simply does not match (`PasteCommands.cs:138`). `ReadVersion` throws 428 earlier still, when the header is absent (`AppHost.cs:207`). The distinction is actionable: 428 means the client never stated a version, so it is a client bug and retrying unchanged will fail again; 412 means somebody else edited, so the client should re-read and let the user compare. Collapsing both into 412 destroys that branch.
+`CheckVersion` throws 428 when `expected < 1` (`PasteCommands.cs:136`) and 412 when the version simply does not match (`PasteCommands.cs:138`). `ReadVersion` throws 428 earlier still, when the header is absent (`AppHost.cs:210`). The distinction is actionable: 428 means the client never stated a version, so it is a client bug and retrying unchanged will fail again; 412 means somebody else edited, so the client should re-read and let the user compare. Collapsing both into 412 destroys that branch.
 
 ### 11. Why is `CheckVersion` inside `MutateAsync` rather than before it? (mid)
 
@@ -68,11 +68,11 @@ It retries every 40 ms for up to ten seconds (`PasteStore.cs:136`), then throws 
 
 ### 16. What breaks if I delete line `PasteCommands.cs:102`? (mid)
 
-That line is `CheckVersion(paste, expectedVersion);` in `UpdateAsync`. Last write wins again. Of the 14 xUnit cases, the stale-version case (`PasteCommandTests.cs:15`), the missing-`If-Match` case (`PasteCommandTests.cs:36`) and the two-writer race (`PasteCommandTests.cs:113`) go red, plus the HTTP 428 and 412 cases in `PasteApiTests`. Nothing in `frontend/tests/client.test.js` can see it, because that suite uses a controlled fetch and never reaches the server. The practice chapter uses exactly this mutation as a deliberate-break lab.
+That line is `CheckVersion(paste, expectedVersion);` in `UpdateAsync`. Last write wins again. Of the 14 xUnit cases, the stale-version case (`PasteCommandTests.cs:15`), the missing-`If-Match` case (`PasteCommandTests.cs:36`) and the two-writer race (`PasteCommandTests.cs:113`) go red, plus the HTTP 412 case in `PasteApiTests`: four in all. `APutWithoutIfMatch_Returns428` stays green, because `ReadVersion` (`AppHost.cs:210`) rejects the missing header before `UpdateAsync` runs. (Corrected 2026-10-06; an earlier version also listed the HTTP 428 case.) Nothing in `frontend/tests/client.test.js` can see it, because that suite uses a controlled fetch and never reaches the server. The practice chapter uses exactly this mutation as a deliberate-break lab.
 
 ### 17. And if I delete the 428 branch in `ReadVersion`? (mid)
 
-`AppHost.cs:207` is the only place that turns a missing `If-Match` header into 428. Remove it and the request binds `expectedVersion` to whatever follows, so the failure surfaces as a parse error or as a 412 instead. The domain tier cannot catch this: `PasteCommandTests` calls `UpdateAsync` directly with `0`. Only the HTTP tier sees it, which is the argument for keeping both tiers.
+`AppHost.cs:210` is the only place that turns a missing `If-Match` header into 428. Remove it and the next line, `OneHeader(context, "If-Match")`, still rejects the request, but with `PasteRuleException`'s default status: **400** "Exactly one If-Match header is required." (`AppHost.cs:204`, default `status = 400` at `WorkspaceDocument.cs:35`). One xUnit case goes red: `PasteApiTests.APutWithoutIfMatch_Returns428`, which expects 428 and gets 400. (Corrected 2026-10-06. An earlier version predicted a parse error or a 412; neither happens.) The domain tier cannot catch this: `PasteCommandTests` calls `UpdateAsync` directly with `0`. Only the HTTP tier sees it, which is the argument for keeping both tiers.
 
 ### 18. Why does deleting a paste keep its receipt? (mid)
 
@@ -114,7 +114,7 @@ That line is `CheckVersion(paste, expectedVersion);` in `UpdateAsync`. Last writ
 
 ### 27. Tell me about a limit you documented rather than fixed. (mid)
 
-**S** Legacy edit keys migrated from the older application can be longer than the current input contract allows. **T** Decide what to do. **A** `keyHeader` (`paste-client.js:76`) and `ReadKey` (`AppHost.cs:229`) bound a key at 6 to 256 characters, and migration cannot infer an original length from a SHA-256 hash. **R** I recorded in `VERIFICATION.md` that a longer old key remains hashed in migrated data but cannot authenticate through the revised contract, and that the old application's data should be preserved for review. Inventing a recovery path would have meant guessing at a value I cannot reconstruct.
+**S** Legacy edit keys migrated from the older application can be longer than the current input contract allows. **T** Decide what to do. **A** `keyHeader` (`paste-client.js:76`) and `ReadKey` (`AppHost.cs:230`) bound a key at 6 to 256 characters, and migration cannot infer an original length from a SHA-256 hash. **R** I recorded in `VERIFICATION.md` that a longer old key remains hashed in migrated data but cannot authenticate through the revised contract, and that the old application's data should be preserved for review. Inventing a recovery path would have meant guessing at a value I cannot reconstruct.
 
 ## Follow-ups an interviewer asks after your answer
 

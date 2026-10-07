@@ -38,6 +38,14 @@ Passed!  - Failed:     0, Passed:    14, Skipped:     0, Total:    14, Duration:
 
 The console harness under `verification/BackendChecks` was **kept** and is unchanged: it remains the tier for a separate worker process, a corrupted data file, an oversized file and an OS-denied replacement.
 
+## Documentation re-check (2026-10-06)
+
+This entry adds evidence; the entries above are left as they were recorded.
+
+- `node --test tests/client.test.js` from `frontend/` on a fresh clone, with no `npm ci` because the test imports only `node:` modules and `../src/paste-client.js`, reported `# tests 15`, `# pass 15`, `# fail 0` on Node 22.16.
+- The xUnit count was re-derived from source, not executed. `PasteCommandTests` has 7 `[Fact]` and 1 `[Theory]` with 2 `InlineData` rows, which makes 9 cases. `PasteApiTests` has 5 `[Fact]`. The total is 14, matching the 2026-09-17 run. The harness still has 30 `await Check(...)` scenarios.
+- No `dotnet` command was run in this re-check.
+
 One finding worth recording, because it is evidence the HTTP tier earns its place: the first run of `PasteApiTests` failed with five `403 Forbidden` responses. The API pins the `Host` header to `127.0.0.1`/`localhost` on the configured port (`AppHost.cs:93`), and the in-memory test server's default base address is `http://localhost/` with no port. Setting `BaseAddress = new Uri("http://127.0.0.1:5184")` on the client satisfies the pin. No production code was changed to make the tests pass.
 
 Still not covered by execution: the React client is exercised only by `frontend/tests/client.test.js` (Node's runner, request-helper level) and by the Python browser tier; there is no component-level test, and `frontend/src/PasteWorkspace.jsx` is still one 787-line file.

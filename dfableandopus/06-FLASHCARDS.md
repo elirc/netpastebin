@@ -4,8 +4,8 @@ Thirty-six pairs. Cover the right column. Project-specific by design, so a right
 
 | Question | Answer |
 |---|---|
-| Which header carries the expected version? | `If-Match`, one strong quoted value such as `"3"`, parsed by `ReadVersion` (`AppHost.cs:203`) |
-| Which header carries the capability? | `X-Paste-Key`, read by `ReadKey` (`AppHost.cs:229`) |
+| Which header carries the expected version? | `If-Match`, one strong quoted value such as `"3"`, parsed by `ReadVersion` (`AppHost.cs:208`) |
+| Which header carries the capability? | `X-Paste-Key`, read by `ReadKey` (`AppHost.cs:218`) |
 | Which header makes a create idempotent? | `X-Request-Id`, a `Guid` in `"D"` format, required at `AppHost.cs:145` |
 | Status for a missing `If-Match` | 428 Precondition Required |
 | Status for a stale `If-Match` | 412 Precondition Failed |
